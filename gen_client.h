@@ -1,7 +1,7 @@
 #include <string>
 #include <iostream>
 
-#include <jax.h>
+#include <jax.hpp>
 using namespace jax;
 
 typedef jax::RouterConnection<Packet, Packet> MyClientConnection;

@@ -32,18 +32,32 @@ foreach ($e2->getChildren()){
 }
 
 print "Get Attrib: ".$e->getAttrib("from")."\n";
+
 print $e->delAttrib("from");
 print "After attrib del: ".$e->toString()."\n";
 
 $e->delElement("abody");
 print "After Element del: ".$e->toString()."\n";
 
+
 use Jabber::JAX::Packet;
 my $p = new Jabber::JAX::Packet( $e );
+
 print "Packet toString IS:". $p->toString()."\n";
 my $e2 = $p->getElement();
 print "After getElement on Packet: ".$e2->toString()."\n";
 
 my $e3 = Jabber::Judo::Element::parseAtOnce("<message to='blah\@blah'><subject>The subject</subject><body> something in the body </body></message>");
-
 print "from string to element to string: ".$e3->toString()."\n";
+my $child = Jabber::Judo::Element::parseAtOnce("<data><subject>The subject</subject><body> something in the body </body></data>");
+print "from string to element to string: ".$child->toString()."\n";
+$e->appendChild($child);
+print "appended child: ".$e->toString()."\n";
+
+
+my $ed = Jabber::Judo::Element::parseAtOnce("<iq from='testuser\@localhost/test' id='testuser12' to='pubsub.localhost' type='get'><query xmlns='jabber:iq:pubsub'><subscribe/></query></iq>");
+print "created iq from string: ".$ed->toString()."\n";
+$ed->delElement("subscribe");
+print "try to delete element from wrong place: ".$ed->toString()."\n";
+
+

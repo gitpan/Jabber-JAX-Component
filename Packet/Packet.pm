@@ -31,10 +31,9 @@ use Inline 'CPP' => 'Config' =>
                              '-I/usr/local/include -I'.abs_path('..').' '. 
                              ' -I'.abs_path('.'),
                     'LIBS' => '-L/usr/local/jax/lib -lbedrock -ljudo -ljax '.
-		              '-lresolv -lnsl -lpthread -lresolv '.
-			      '-lnsl -lpthread',
-                    'CCFLAGS' => '-DHAVE_CONFIG_H -D_REENTRANT '.
-		                 '-D_POSIX_PTHREAD_SEMANTICS -D__USE_MALLOC',
+		              '-lpthread -lresolv ',
+#                    'CCFLAGS' => '-DHAVE_CONFIG_H -D_REENTRANT '.
+#		                 '-D_POSIX_PTHREAD_SEMANTICS -D__USE_MALLOC',
 		    ;
 
 use Inline 'CPP';

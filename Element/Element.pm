@@ -31,10 +31,9 @@ use Inline 'CPP' => 'Config' =>
                              '-I/usr/local/include -I'.abs_path('..').' '. 
                              ' -I'.abs_path('.'),
                     'LIBS' => '-L/usr/local/jax/lib -lbedrock -ljudo -ljax '.
-		              '-lresolv -lnsl -lpthread -lresolv '.
-			      '-lnsl -lpthread',
-                    'CCFLAGS' => '-DHAVE_CONFIG_H -D_REENTRANT '.
-		                 '-D_POSIX_PTHREAD_SEMANTICS -D__USE_MALLOC',
+		              '-lpthread -lresolv ',
+#                    'CCFLAGS' => '-DHAVE_CONFIG_H -D_REENTRANT '.
+#		                 '-D_POSIX_PTHREAD_SEMANTICS -D__USE_MALLOC',
 		    ;
 
 use Inline 'CPP';
@@ -266,6 +265,26 @@ sub addElement {
 }
 
 
+=item appendChild
+
+  use Jabber::Judo::Element;
+  my $e = new Jabber::Judo::Element( "message" );
+  my $ec = new Jabber::Judo::Element( "somechild" );
+  $e->appendChild( $ec );
+ 
+  Copy an element onto another element
+
+=cut
+
+sub appendChild {
+  my $self = shift;
+  my $child = shift;
+  die "MUST supply another Jabber::Judo::Element "
+     unless ref($child) eq "Jabber::Judo::Element";
+  append_child( $self->{ELEMENT}, $child->_element() )
+}
+
+
 =item findElement
 
   use Jabber::Judo::Element;
@@ -494,30 +513,6 @@ __CPP__
 using namespace std;
 using namespace judo;
 
-class MyElement: 
-    public Element
-{
-public:
-    MyElement();
-    void   delElement(const std::string& name);
-};
-
-
-void MyElement::delElement(const string& name) {
-    iterator it = begin();
-    for (; it != end(); it++)
-    {
-	if (((*it)->getType() == Node::ntElement) && 
-	    ((*it)->getName() == name))
-	    break;
-    }
-    if (it != end()){
-        Node *node = *it;
-        _children.erase(it);
-	delete(node);
-    }
-}
-
 
 SV* new_element( SV* name ) {
   Element* e = new Element( SvPV(name,SvCUR(name)) );
@@ -556,10 +551,24 @@ SV* add_element(SV* obj, SV* name ) {
        
 }
 
+ 
+SV* append_child(SV* obj, SV* child) {
+  
+  judo::Element* my_copy = new judo::Element(* (judo::Element*) SvIV(SvRV(child)) );
+  //   judo::Element* pub_elem = new judo::Element(*(judo::Element*) *b);
+  ((judo::Element*) SvIV(SvRV(obj)))->appendChild(my_copy);
+  return newSViv(1);
+       
+}
+
 
 void del_element(SV* obj, SV* name) {
 
-  ((MyElement*) SvIV(SvRV(obj)))->delElement(SvPV(name,SvCUR(name)));
+  judo::Element::iterator it = ((Element*) SvIV(SvRV(obj)))->find(SvPV(name,SvCUR(name)));
+  if (it != ((Element*) SvIV(SvRV(obj)))->end() )
+  {
+    ((Element*) SvIV(SvRV(obj)))->detachChild(it);
+  }
 
 }
 

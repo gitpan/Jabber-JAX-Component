@@ -301,7 +301,8 @@ ClientController::ClientController(const std::string& serviceid,
                                const std::string& perl_func,
                                void* my_self)
     : _id(serviceid), _password(password), _hostname(hostname),
-      _port(port), _tpool(1), _watcher(_tpool, 10),
+//      _port(port), _tpool(1), _watcher(_tpool, 10),
+      _port(port), _tpool(1), _watcher(10),
       _router(_watcher, *this, outgoing_dir, 0),
       _perl_func(perl_func),
       _my_self(my_self)

@@ -5,7 +5,7 @@ use strict;
 BEGIN { `mkdir /tmp/_Inline` if ! -d '/tmp/_Inline' }
 
 use vars qw($VERSION);
-$VERSION = '0.02';
+$VERSION = '0.10';
 
 use Cwd qw(abs_path); 
 use Jabber::Judo::Element;
@@ -33,13 +33,17 @@ use Inline 'CPP' => 'Config' =>
                              '-I/usr/local/include -I'.abs_path('..').' '. 
                              ' -I'.abs_path('.'),
                     'LIBS' => '-L/usr/local/jax/lib -lbedrock -ljudo -ljax '.
-		              '-lresolv -lnsl -lpthread -lresolv '.
-			      '-lnsl -lpthread',
-                    'CCFLAGS' => '-DHAVE_CONFIG_H -D_REENTRANT '.
-		                 '-D_POSIX_PTHREAD_SEMANTICS -D__USE_MALLOC',
+		              '-lpthread -lresolv ',
+#                    'CCFLAGS' => '-DHAVE_CONFIG_H -D_REENTRANT '.
+#		                 '-D_POSIX_PTHREAD_SEMANTICS -D__USE_MALLOC',
 		    ;
 
 use Inline 'CPP';
+#                    'LIBS' => '-L/usr/local/jax/lib -lbedrock -ljudo -ljax '.
+#		              '-lresolv -lnsl -lpthread -lresolv '.
+#			      '-lnsl -lpthread',
+#                    'CCFLAGS' => '-DHAVE_CONFIG_H -D_REENTRANT '.
+#		                 '-D_POSIX_PTHREAD_SEMANTICS -D__USE_MALLOC',
 
 # Config for Inline::MakeMaker
 #use Inline C=> 'DATA',
@@ -70,7 +74,19 @@ Jabber::JAX::Component - Perl wrapper for the Jabber JECL Library creates the Ja
               $e->putAttrib('from', $to);
               $rc->deliver( $p );
 
-            }
+            },
+
+        inithandler     =>
+ 
+        sub {
+               print STDERR "Hi - I've Started ...\n";
+            },
+
+        stophandler     =>
+ 
+        sub {
+               print STDERR "Hi - I'm Stopping ...\n";
+            },
        );
  
   $c->start();
@@ -180,7 +196,62 @@ sub start {
                $self->{host}, 
 	       $self->{port}, 
 	       "Jabber::JAX::Component::ComponentHandler",
+	       "Jabber::JAX::Component::InitHandler",
+	       "Jabber::JAX::Component::StopHandler",
 	       $self);
+
+}
+
+
+# Wrapper for the Stop callback subroutine that the user passes
+sub StopHandler {
+
+  my $self =  shift;
+  my $router = shift;
+
+
+  # dont bother if we dont have one
+  return () unless exists $self->{'stophandler'};
+
+  # create a Router object to pass for access to the 
+  #  deliver function
+  my $class = 'Jabber::JAX::Component';
+  my $rc = {
+	'ROUTER'   => $router
+	};
+  bless ($rc, $class);
+
+  # Call the subroutine reference passing
+  #  the Router, Packet and the stringified XML ( not really necessary )
+  my @result = &{$self->{'stophandler'}}( $rc );
+
+  return @result;
+
+}
+
+
+# Wrapper for the init callback subroutine that the user passes
+sub InitHandler {
+
+  my $self =  shift;
+  my $router = shift;
+
+  # dont bother if we dont have one
+  return () unless exists $self->{'inithandler'};
+
+  # create a Router object to pass for access to the 
+  #  deliver function
+  my $class = 'Jabber::JAX::Component';
+  my $rc = {
+	'ROUTER'   => $router
+	};
+  bless ($rc, $class);
+
+  # Call the subroutine reference passing
+  #  the Router, Packet and the stringified XML ( not really necessary )
+  my @result = &{$self->{'inithandler'}}( $rc );
+
+  return @result;
 
 }
 
@@ -211,7 +282,7 @@ sub ComponentHandler {
 
   # Call the subroutine reference passing
   #  the Router, Packet and the stringified XML ( not really necessary )
-  my @result = &{$self->{handler}}( $rc, $p, $xml );
+  my @result = &{$self->{'handler'}}( $rc, $p, $xml );
 
   return @result;
 
@@ -239,7 +310,9 @@ sub toString {
 
 sub deliver {
   my $self = shift;
-  my $packet = shift->_packet();
+  my $packet = shift;
+#  warn " SENDING: ".$packet->toString()."\n\n";
+  my $packet = $packet->_packet();
   return punt( $self->{ROUTER}, $packet );
 }
 
@@ -250,6 +323,10 @@ sub stop {
 }
 
 
+sub getNextID {
+  my $self = shift;
+  return get_next_id( $self->{ROUTER} );
+}
 
 
 1;
@@ -261,49 +338,169 @@ __CPP__
 
 using namespace std;
 
-// Constructor
-GenComponentController::GenComponentController(const std::string& serviceid, 
-			       const std::string& password, 
-			       const std::string& hostname, 
-			       unsigned int port, bool outgoing_dir, 
-			       const std::string& perl_func,
-			       void* my_self)
-    : _id(serviceid), _password(password), _hostname(hostname),
-      _port(port), _tpool(1), _watcher(_tpool, 10),
-      _router(_watcher, *this, outgoing_dir, 0),
-      _perl_func(perl_func),
-      _my_self(my_self)
-{
-    // Create an address struct, passing the hostname we want to
-    // connect to, a standard SRV identifier, and a default port
-    // to use (in case the SRV lookup doesn't get us a port)
-    bedrock::net::Address addr(_hostname, "_jabber._tcp", _port);
+using namespace gencomp;
 
-    // Start the router connection
-    _router.connect(_id, _password, addr);
+// Constructor
+Controller::Controller()
+    : _timer(1)
+{}
+
+
+Controller::~Controller()
+{}
+
+
+void Controller::setPerlFunc(const std::string& perl_func, const std::string& init_pfunc, const std::string& stop_pfunc, void* my_self)
+{
+   //cerr << "Setting the Perl values ...." << endl;
+   _perl_func  = perl_func;
+   _init_pfunc = init_pfunc;
+   _stop_pfunc = stop_pfunc;
+   _my_self = my_self;
+}
+
+
+void Controller::init(judo::Element* e)
+{
+
+    _tpool   = new bedrock::ThreadPool(2);
+    _tkey    = _tpool->getNextThreadID();
+    _watcher = new bedrock::net::SocketWatcher(2);
+
+    //cerr << "Component element passed to init:" << e->toString() << endl;
+    _jabberd_ip       = e->findElement("jax:component:host")->getCDATA();
+    _jabberd_port     = atoi(e->findElement("jax:component:port")->getCDATA().c_str());
+    _component_id     = e->findElement("jax:component:name")->getCDATA();
+    _component_secret = e->findElement("jax:component:secret")->getCDATA();
+    
+    _router = new MyRouterConnection(*_watcher, *this, true, _tkey);
+
+    establishRouterConnection(0);
+
+
+}
+
+
+string Controller::getNextID()
+{
+    char buf[64];
+    snprintf(buf, 64, "A%d", _pending_counter++);
+    return string(buf);
+}
+
+
+void Controller::establishRouterConnection(int retrycount)
+{
+    if (retrycount > 3)
+    {
+	jax::Component::stop(-1, "Unable to establish router connection.");
+    }
+
+    try
+    {
+	bedrock::net::Address addr(_jabberd_ip, string(""), _jabberd_port);
+	_router->connect(_component_id, _component_secret, addr);
+    }
+    catch (MyRouterConnection::exception::SocketError& e)
+    {
+	_timer.schedule(5, _tpool, _tkey,
+			bedrock::callback::wrap(this,
+				       &Controller::establishRouterConnection,
+						retrycount+1), 1);
+    }
+    // cerr << "establish: Connected" << endl;
 }
 
 
 // Router event callbacks
-void GenComponentController::onRouterConnected()
+void Controller::onRouterConnected()
 {
     cerr << "[jax::RouterConnection] Router is now connected." << endl;
+    int result;
+    SV* res;
+
+    dSP;
+    ENTER;
+    SAVETMPS;
+    PUSHMARK(SP);
+
+    // pointer to the calling object instance
+    XPUSHs((SV*)_my_self);
+
+    // Pointer to the router instance to be plugged into
+    //  an object for calling use
+    SV* obj_ref = newSViv(0);
+    SV* obj = newSVrv(obj_ref, NULL);
+    sv_setiv(obj, (IV) this);
+    SvREADONLY_on(obj);
+    XPUSHs((SV*)obj_ref);
+    PUTBACK;
+
+    result = perl_call_pv(_init_pfunc.data(), G_ARRAY | G_EVAL );
+
+    if(SvTRUE(ERRSV)) fprintf(stderr, "perl call errored: %s", SvPV(ERRSV,PL_na));
+    SPAGAIN;
+    if ( result > 0 ){
+      res = POPs;
+    };
+    PUTBACK;
+    FREETMPS;
+    pop_scope();  // is the part of LEAVE that we want
 }
 
-void GenComponentController::onRouterDisconnected()
+void Controller::onRouterDisconnected()
 {
-    cerr << "[jax::RouterConnection] Router is now disconnected." << endl;
-    bedrock::Application::stop(1, "Router connection lost");
-    //bedrock::Application::exit(1, "Router connection lost - exiting");
+    sleep(2);
+    cerr << "Router disconnected - retry ...." << endl;
+    establishRouterConnection(0);
 }
 
-void GenComponentController::onRouterError()
+void Controller::onRouterError()
 {
     cerr << "[jax::RouterConnection] Router error occurred." << endl;
-    _router.disconnect();
+    _router->disconnect();
 }
 
-void GenComponentController::onRouterPacket(jax::Packet* packet)
+
+void Controller::disconnect()
+{
+    int result;
+    SV* res;
+
+    dSP;
+    ENTER;
+    SAVETMPS;
+    PUSHMARK(SP);
+
+    // pointer to the calling object instance
+    XPUSHs((SV*)_my_self);
+
+    // Pointer to the router instance to be plugged into
+    //  an object for calling use
+    SV* obj_ref = newSViv(0);
+    SV* obj = newSVrv(obj_ref, NULL);
+    sv_setiv(obj, (IV) this);
+    SvREADONLY_on(obj);
+    XPUSHs((SV*)obj_ref);
+    PUTBACK;
+
+    result = perl_call_pv(_stop_pfunc.data(), G_ARRAY | G_EVAL );
+
+    if(SvTRUE(ERRSV)) fprintf(stderr, "perl call errored: %s", SvPV(ERRSV,PL_na));
+    SPAGAIN;
+    if ( result > 0 ){
+      res = POPs;
+    };
+    PUTBACK;
+    FREETMPS;
+    pop_scope();  // is the part of LEAVE that we want
+    sleep(2);
+    Application::stop(0, "Shutting Down ....");
+    Application::exit(0, "Exiting gracefully ....");
+}
+
+
+void Controller::onRouterPacket(jax::Packet* p)
 {
 
     // Generic packet handler
@@ -326,19 +523,19 @@ void GenComponentController::onRouterPacket(jax::Packet* packet)
     //  an object for calling use
     SV* obj_ref = newSViv(0);
     SV* obj = newSVrv(obj_ref, NULL);
-    sv_setiv(obj, (IV) ((MyRouterConnection*)&_router));
+    sv_setiv(obj, (IV) this);
     SvREADONLY_on(obj);
     XPUSHs((SV*)obj_ref);
 
     // Pointer to the current incoming packet
     SV* packet_ref = newSViv(0);
     SV* packet_obj = newSVrv(packet_ref, NULL);
-    sv_setiv(packet_obj, (IV) packet);
+    sv_setiv(packet_obj, (IV) p);
     SvREADONLY_on(packet_obj);
     XPUSHs((SV*)packet_ref);
 
     // scalar of the XML to string
-    xml = packet->toString();
+    xml = p->toString();
     XPUSHs(sv_2mortal(newSVpv( xml.data(),
 			      xml.length() )));
     PUTBACK;
@@ -356,45 +553,6 @@ void GenComponentController::onRouterPacket(jax::Packet* packet)
 }
 
 
-int runComponent(char* cid,
-                 char* sec,
-		 char* host,
-		 int   prt,
-		 char* pfunc,
-		 SV* myself)
-{
-    string       component_id = cid;
-    string       secret       = sec;
-    bool         outgoing     = true;
-
-    string       jabberd_ip   = host;
-    unsigned int jabberd_port = prt;
-
-    string       perl_func    = pfunc;
-    void*        my_self    = myself;
-
-    int retval;
-
-
-    cerr << "[jax::RouterConnection] Starting component..."   <<endl;
-    cerr << "\tComponent ID : " << component_id <<endl;
-    cerr << "\tJabberd IP   : " << jabberd_ip << endl;
-    cerr << "\tJabberd Port : " << jabberd_port << endl << endl;
-
-
-    GenComponentController genComp(component_id,
-                                   secret,
-				   jabberd_ip,
-				   jabberd_port,
-				   outgoing,
-				   perl_func,
-				   my_self);
-
-    bedrock::Application::start();
-
-}
-
-
 SV* to_string(SV* obj) {
 
   std::string s = ((Packet*) SvIV(SvRV(obj)))->toString();
@@ -405,8 +563,16 @@ SV* to_string(SV* obj) {
 
 SV* punt(SV* obj, SV* pkt) {
 
-  ((MyRouterConnection*) SvIV(SvRV(obj)))->deliver( ((Packet*) SvIV(SvRV(pkt))) );
+  ((Controller*) SvIV(SvRV(obj)))->deliver( ((Packet*) SvIV(SvRV(pkt))) );
   return newSViv(1);
+
+}
+
+
+SV* get_next_id(SV* obj) {
+
+  std::string id = ((Controller*) SvIV(SvRV(obj)))->getNextID();
+  return newSVpv( id.data(), id.length() );
 
 }
 
@@ -414,7 +580,85 @@ SV* punt(SV* obj, SV* pkt) {
 SV* component_stop(SV* obj) {
 
   // stop it!
-  ((MyRouterConnection*) SvIV(SvRV(obj)))->disconnect();
+  ((Controller*) SvIV(SvRV(obj)))->disconnect();
   return newSViv(1);
 
 }
+
+
+Controller* c_ptr;
+bool shutdown_flag;
+
+
+static void death(int signal)
+{
+   if ( ! shutdown_flag )
+   {
+       shutdown_flag = true;
+       cerr << " Component got a signal: " << signal << endl;
+       c_ptr->disconnect();
+   }
+}
+
+
+
+
+int runComponent(char* cid,
+                 char* sec,
+		 char* host,
+		 int   prt,
+		 char* mainpfunc,
+		 char* initpfunc,
+		 char* stoppfunc,
+		 SV* myself)
+{
+    std::string       component_id = cid;
+    std::string       secret       = sec;
+    bool              outgoing     = true;
+    std::string       nspace       = "jabber:component:" + component_id;
+
+    std::string       jabberd_ip   = host;
+    unsigned int      jabberd_port = prt;
+
+    std::string       perl_func    = mainpfunc;
+    std::string       init_pfunc   = initpfunc;
+    std::string       stop_pfunc   = stoppfunc;
+    void*             my_self    = myself;
+
+    int retval;
+
+
+    cerr << "[jax::RouterConnection] Starting component..."   << endl;
+    cerr << "\tComponent ID : " << component_id <<endl;
+    cerr << "\tJabberd IP   : " << jabberd_ip << endl;
+    cerr << "\tJabberd Port : " << jabberd_port << endl << endl;
+
+
+    Controller c;
+    c.setPerlFunc(perl_func, init_pfunc, stop_pfunc, my_self);
+
+    c_ptr = &c;
+
+
+    jax::ComponentLoader loader(&c);
+    signal(SIGPIPE, SIG_IGN);
+    Application::registerShutdownSignal(SIGTERM);
+    //Application::registerShutdownSignal(SIGINT);
+    //Application::registerShutdownSignal(SIGHUP);
+
+    shutdown_flag = false;
+    signal(SIGINT, &death);
+    signal(SIGHUP, &death);
+
+
+    int myreturn = loader.start(jabberd_ip.c_str(), jabberd_port, outgoing, component_id.c_str(), secret.c_str(), nspace.c_str());
+
+    cerr << "finished ....." << endl;
+    // c.disconnect();
+    //Application::stop(0, "Shutting Down ....");
+    //Application::exit(0, "Exiting gracefully....");
+
+    return myreturn;
+
+}
+

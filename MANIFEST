@@ -17,14 +17,6 @@ Client/MANIFEST
 Client/Makefile.PL
 Client/test.pl
 Client/Client.pm
-#MyRouterConnection/MANIFEST
-#MyRouterConnection/Makefile.PL
-#MyRouterConnection/test.pl
-#MyRouterConnection/MyRouterConnection.pm
-#MyClientConnection/MANIFEST
-#MyClientConnection/Makefile.PL
-#MyClientConnection/test.pl
-#MyClientConnection/MyRouterConnection.pm
 Packet/MANIFEST
 Packet/Makefile.PL
 Packet/test.pl
@@ -32,3 +24,6 @@ Packet/Packet.pm
 examples/comptest.pl
 examples/judotest.pl
 examples/testclient.pl
+examples/pubsub-jecl.pl
+examples/setupdb.pl
+examples/MyConfig.pm

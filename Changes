@@ -8,3 +8,9 @@ Revision history for Perl extension Jabber::JAX::Component.
        - removed the need Jabber::JAX::MyRouterConnection - this will speed up compile time ( one less module ), and reduce the size of the distribution.
        - added a method to Jabber::JAX::Component called stop, so that the component can gracefully shut itself down
 
+0.10  Fri Apr 12 15:30:00 BST 2002
+       - upgraded the component to the new version of JECL using the ComponentLoader class
+       - added two callbacks inithandler and stophandler for on component connection and 
+          when shutting down, respectively
+       - created a comprehensive example for a publish & subscribe component that requires
+          MySQL as the database ( includes setup script etc. )
