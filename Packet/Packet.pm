@@ -13,7 +13,7 @@ use Cwd qw(abs_path);
 # Inline config for the build of the C++ components
 #  requires libjax, libjudo, and libbedrock from the JECLs
 
-use Inline 'CPP' => 'Config' => 
+use Inline 'CPP' => 'Config' =>
 # force my header files to come first because they clash
 #  badly with perls
                     'AUTO_INCLUDE' => [ undef,
@@ -24,12 +24,13 @@ use Inline 'CPP' => 'Config' =>
 		                       '#include "XSUB.h"',
 		                       '#include "INLINE.h"',
 		                       ' }'],
+                    'CC' => 'g++3',
+                    'LD' => 'g++3',
                     'DIRECTORY' => '/tmp/_Inline',
-                    'INC' => '-I/usr/local/include -I'.abs_path('..').' '. 
-                             '-I/usr/local/include -I'.abs_path('.'),
-                    'LIBS' => '-L'.abs_path('..').' -lbedrock -ljudo -ljax '.
-                              '-L'.abs_path('.').' -lbedrock -ljudo -ljax '.
-		              '-L/usr/local/lib -lbedrock -ljudo -ljax '.
+                    'INC' => '-I/usr/local/jax/include '. 
+                             '-I/usr/local/include -I'.abs_path('..').' '. 
+                             ' -I'.abs_path('.'),
+                    'LIBS' => '-L/usr/local/jax/lib -lbedrock -ljudo -ljax '.
 		              '-lresolv -lnsl -lpthread -lresolv '.
 			      '-lnsl -lpthread',
                     'CCFLAGS' => '-DHAVE_CONFIG_H -D_REENTRANT '.

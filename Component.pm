@@ -5,19 +5,17 @@ use strict;
 BEGIN { `mkdir /tmp/_Inline` if ! -d '/tmp/_Inline' }
 
 use vars qw($VERSION);
-$VERSION = '0.01';
+$VERSION = '0.02';
 
 use Cwd qw(abs_path); 
 use Jabber::Judo::Element;
 use Jabber::JAX::Packet;
-use Jabber::JAX::MyRouterConnection;
 
 
 # Inline config for the build of the C++ components
 #  requires libjax, libjudo, and libbedrock from the JECLs
 
-
-use Inline 'CPP' => 'Config' => 
+use Inline 'CPP' => 'Config' =>
 # force my header files to come first because they clash
 #  badly with perls
                     'AUTO_INCLUDE' => [ undef,
@@ -28,15 +26,15 @@ use Inline 'CPP' => 'Config' =>
 		                       '#include "XSUB.h"',
 		                       '#include "INLINE.h"',
 		                       ' }'],
+                    'CC' => 'g++3',
+                    'LD' => 'g++3',
                     'DIRECTORY' => '/tmp/_Inline',
-                    'INC' => '-I/usr/local/include -I'.abs_path('..').' '. 
-                             '-I/usr/local/include -I'.abs_path('.'),
-                    'LIBS' => '-L'.abs_path('..').' -lbedrock -ljudo -ljax '.
-                              '-L'.abs_path('.').' -lbedrock -ljudo -ljax '.
-		              '-L/usr/local/lib -lbedrock -ljudo -ljax '.
+                    'INC' => '-I/usr/local/jax/include '. 
+                             '-I/usr/local/include -I'.abs_path('..').' '. 
+                             ' -I'.abs_path('.'),
+                    'LIBS' => '-L/usr/local/jax/lib -lbedrock -ljudo -ljax '.
 		              '-lresolv -lnsl -lpthread -lresolv '.
-			      '-lnsl -lpthread -lrfccm',
-#			      '-lnsl -lpthread',
+			      '-lnsl -lpthread',
                     'CCFLAGS' => '-DHAVE_CONFIG_H -D_REENTRANT '.
 		                 '-D_POSIX_PTHREAD_SEMANTICS -D__USE_MALLOC',
 		    ;
@@ -46,7 +44,7 @@ use Inline 'CPP';
 # Config for Inline::MakeMaker
 #use Inline C=> 'DATA',
 #                NAME => 'Jabber::JAX::Component',
-#                VERSION => '0.01';
+#                VERSION => '0.02';
 
 
 =head1 NAME
@@ -94,7 +92,7 @@ To run this you should use perl 5.6.x ( the standard one supplied with RH 7.1 wo
 
 Further to the SYNOPSIS above - the basic structure for programming with these perl packages is as follows:
 The Jabber::JAX::Component object takes a subroutine reference for the parameter 'handler'.  This subroutine is then called on receipt of every packet by the Jabber component, and passed two arguements ( well three really  - but the last - the stringified xml is temporary until the judo::Element object is finalised ).
-The First argument is $rc - a reference to the RouterConnection ( Jabber::JAX::MyRouterConnection ).  It has only one method and that is deliver, which is passed a Jabber::JAX::Packet object, for delivery.
+The First argument is $rc - a reference to the RouterConnection ( Jabber::JAX::Component ).  It has only two methods that you should use and that is deliver, which is passed a Jabber::JAX::Packet object, for delivery, and stop which will shutdown the component.
 The second argument is $p a reference to the current inbound packet ( Jabber::JAX::Packet ). Use the $p->getElement() method to return a Jabber::Judo::Element object for easy manipulation of the XML packet.
 
 Don't forget to create the corresponding entry int the jabber.xml config file such as:
@@ -118,7 +116,7 @@ Piers Harding - but DizzyD ( author of JECL ) is the real star
 
 =head1 SEE ALSO
 
-Jabber::JAX::Packet, Jabber::JAX::Component, Jabber::JAX::MyRouterConnection, Jabber::Judo::Element
+Jabber::JAX::Packet, Jabber::JAX::Component, Jabber::JAX::Client, Jabber::Judo::Element
 
 =cut
 
@@ -150,17 +148,17 @@ sub new {
       }
     }
 
-    die "must supply 'component' parameter to Jabber::JAX::Compoenent"
+    die "must supply 'component' parameter to Jabber::JAX::Component"
         unless exists $self->{component};
-    die "must supply 'secret' parameter to Jabber::JAX::Compoenent"
+    die "must supply 'secret' parameter to Jabber::JAX::Component"
         unless exists $self->{secret};
     die "must supply 'host' or 'server' parameter".
-        " to Jabber::JAX::Compoenent"
+        " to Jabber::JAX::Component"
         unless exists $self->{host};
     die "must supply 'port' or 'server' parameter".
-        " to Jabber::JAX::Compoenent"
+        " to Jabber::JAX::Component"
         unless exists $self->{port};
-    die "must supply 'handler' parameter to Jabber::JAX::Compoenent"
+    die "must supply 'handler' parameter to Jabber::JAX::Component"
         unless exists $self->{handler};
 
 # create the object and return it
@@ -197,7 +195,7 @@ sub ComponentHandler {
 
   # create a Router object to pass for access to the 
   #  deliver function
-  my $class = 'Jabber::JAX::MyRouterConnection';
+  my $class = 'Jabber::JAX::Component';
   my $rc = {
 	'ROUTER'   => $router
 	};
@@ -218,6 +216,39 @@ sub ComponentHandler {
   return @result;
 
 }
+
+
+sub getElement {
+  my $self = shift;
+  my $class = 'Jabber::Judo::Element';
+  my $e = {
+      ELEMENT => get_element( $self->{PACKET} )
+	};
+  die "Could not create a Element object " 
+              unless $e->{ELEMENT};
+  bless( $e, $class );
+  return $e;
+}
+
+
+sub toString {
+  my $self = shift;
+  return  to_string( $self->{PACKET} );
+}
+
+
+sub deliver {
+  my $self = shift;
+  my $packet = shift->_packet();
+  return punt( $self->{ROUTER}, $packet );
+}
+
+
+sub stop {
+  my $self = shift;
+  return component_stop( $self->{ROUTER} );
+}
+
 
 
 
@@ -347,7 +378,6 @@ int runComponent(char* cid,
 
     cerr << "[jax::RouterConnection] Starting component..."   <<endl;
     cerr << "\tComponent ID : " << component_id <<endl;
-    cerr << "\tSecret       : " << secret << endl;
     cerr << "\tJabberd IP   : " << jabberd_ip << endl;
     cerr << "\tJabberd Port : " << jabberd_port << endl << endl;
 
@@ -361,5 +391,30 @@ int runComponent(char* cid,
 				   my_self);
 
     bedrock::Application::start();
+
+}
+
+
+SV* to_string(SV* obj) {
+
+  std::string s = ((Packet*) SvIV(SvRV(obj)))->toString();
+  return newSVpv( s.data(), s.length() );
+
+}
+
+
+SV* punt(SV* obj, SV* pkt) {
+
+  ((MyRouterConnection*) SvIV(SvRV(obj)))->deliver( ((Packet*) SvIV(SvRV(pkt))) );
+  return newSViv(1);
+
+}
+
+
+SV* component_stop(SV* obj) {
+
+  // stop it!
+  ((MyRouterConnection*) SvIV(SvRV(obj)))->disconnect();
+  return newSViv(1);
 
 }

@@ -3,3 +3,8 @@ Revision history for Perl extension Jabber::JAX::Component.
 0.01  Mon Sep  3 16:25:11 BST 2001
 	- original version; created by Piers Harding
 
+0.02  Sat Dec 30 18:32:00 BST 2001
+       - Added in the Jabber::JAX::Client module for writing high speed clients
+       - removed the need Jabber::JAX::MyRouterConnection - this will speed up compile time ( one less module ), and reduce the size of the distribution.
+       - added a method to Jabber::JAX::Component called stop, so that the component can gracefully shut itself down
+

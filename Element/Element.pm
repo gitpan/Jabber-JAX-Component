@@ -11,8 +11,9 @@ use Cwd qw(abs_path);
 
 # Inline config for the build of the C++ components
 #  requires libjax, libjudo, and libbedrock from the JECLs
+#use Inline 'NOCLEAN';
 
-use Inline 'CPP' => 'Config' => 
+use Inline 'CPP' => 'Config' =>
 # force my header files to come first because they clash
 #  badly with perls
                     'AUTO_INCLUDE' => [ undef,
@@ -23,12 +24,13 @@ use Inline 'CPP' => 'Config' =>
 		                       '#include "XSUB.h"',
 		                       '#include "INLINE.h"',
 		                       ' }'],
+                    'CC' => 'g++3',
+                    'LD' => 'g++3',
                     'DIRECTORY' => '/tmp/_Inline',
-                    'INC' => '-I/usr/local/include -I'.abs_path('..').' '. 
-                             '-I/usr/local/include -I'.abs_path('.'),
-                    'LIBS' => '-L'.abs_path('..').' -lbedrock -ljudo -ljax '.
-                              '-L'.abs_path('.').' -lbedrock -ljudo -ljax '.
-		              '-L/usr/local/lib -lbedrock -ljudo -ljax '.
+                    'INC' => '-I/usr/local/jax/include '. 
+                             '-I/usr/local/include -I'.abs_path('..').' '. 
+                             ' -I'.abs_path('.'),
+                    'LIBS' => '-L/usr/local/jax/lib -lbedrock -ljudo -ljax '.
 		              '-lresolv -lnsl -lpthread -lresolv '.
 			      '-lnsl -lpthread',
                     'CCFLAGS' => '-DHAVE_CONFIG_H -D_REENTRANT '.
@@ -492,6 +494,30 @@ __CPP__
 using namespace std;
 using namespace judo;
 
+class MyElement: 
+    public Element
+{
+public:
+    MyElement();
+    void   delElement(const std::string& name);
+};
+
+
+void MyElement::delElement(const string& name) {
+    iterator it = begin();
+    for (; it != end(); it++)
+    {
+	if (((*it)->getType() == Node::ntElement) && 
+	    ((*it)->getName() == name))
+	    break;
+    }
+    if (it != end()){
+        Node *node = *it;
+        _children.erase(it);
+	delete(node);
+    }
+}
+
 
 SV* new_element( SV* name ) {
   Element* e = new Element( SvPV(name,SvCUR(name)) );
@@ -533,7 +559,7 @@ SV* add_element(SV* obj, SV* name ) {
 
 void del_element(SV* obj, SV* name) {
 
-  ((Element*) SvIV(SvRV(obj)))->delElement(SvPV(name,SvCUR(name)));
+  ((MyElement*) SvIV(SvRV(obj)))->delElement(SvPV(name,SvCUR(name)));
 
 }
 

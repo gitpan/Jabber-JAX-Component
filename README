@@ -53,15 +53,15 @@
 
 Ok.
 
-What Is Jabber::JAX::Component?
-===============================
+What Is Jabber::JAX::Component? and more recently Jabber::JAX::Client
+=====================================================================
 
-Available at: http://www.ompa.net/JAXREADME.html 
-Download  at: http://www.ompa.net/download/Jabber-JAX-Component-0.01.tar.gz
+Available on CPAN ( http://search.cpan.org )
 
 Jabber::JAX::Component is yet another perl implementation for writing 
-Jabber components.  How it differs is that it is a wrapper for the 
-high performance JECL libraries for writing components in C++.  With this in mind - the idea is to be able to write Jabber Components in perl that are very quick.  My first attempt at bench marking this - writting the good ol' echo component - got through put of 1000 Messages in about 12 seconds.
+Jabber components, and its partner Jabber::JAX::Client for writing clients.
+How they differ is that they are a wrapper for the high performance JECL 
+libraries for writing components in C++.  With this in mind - the idea is to be able to write Jabber Components, and clients in perl that are very quick.  My first attempt at bench marking this - writting the good ol' echo component - got through put of 1000 Messages in about 12 seconds.
 
 Jabber::JAX::Component is the complement for the jax::RouterConnection C++ object
 ( see the jax.h header file for a description ).  It creates a basic connection object for a component to a jaber server with a thread pool ( currently 10 ), and provides the framework for embedding a perl callback subroutine to handle each incoming packet.  See the gen_component.h header file for more details.
@@ -78,7 +78,7 @@ JECL Libraries ( http://jabber.tigris.org )
 
 
 To run this you should use perl 5.6.1 - what ever one you use it MUST NOT be compiled with threads ( no -Dusethreads -Duseithreads -D5005threads etc ) See below for more details - check perl -V, and you need to get the JECL libraries from http://jabber.tigris.org ( check them out of CVS instead of downloading the tgz files - it is much better if you get the echo_component found within, built and working first ).  The only catch with the libraries are the dependencies ( explained within the library README doco ) - this requires the g++ >= 3.0.x.  At the time of writing this can be obtained from http://www.redhat.com in the RH 7.2 beta download section ( yay - GO RedHat ! ).
-Once you have built the libraries - if there is not install routine ( as there wasn't at the time of writing this ), then copy the *.h, xmlparse.h, *.a, and *.la files for judo, jax, and bedrock into the Jabber::JAX::Component distribution directory ( where the primary Makefile.PL is ), or into their respective palce in /usr/local/lib and /usr/local/include.  After all - the build process had to be able to fine them :-).
+Once you have built the libraries - if there is not install routine ( as there wasn't at the time of writing this ), then copy the *.h, xmlparse.h, *.a, and *.la files for judo, jax, and bedrock into the respective /usr/local/jax/include and lib directory ( see update.sh as an example ), or into their respective place in /usr/local/lib and /usr/local/include.  After all - the build process had to be able to fine them :-).
 
 
 Building the Correct perl
@@ -100,9 +100,10 @@ and make install should work just fine
 Writing Applications
 =====================
 
-There are two test/sample scripts found with this distribution
+There are three test/sample scripts found with this distribution
 comptest.pl <- the echo component test
 judotest.pl <- XML node manipulation test
+testclient.pl <- the echo client test
 
 
 To run the component test you need your very on jabber server, and to add some configuration such as this:
@@ -114,6 +115,9 @@ To run the component test you need your very on jabber server, and to add some c
       <secret>mysecret</secret>
     </accept>
   </service>
+
+
+ Please also check out the examples directory - there are a few starters there.
 
 I hope you enjoy this.
 

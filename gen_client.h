@@ -2,17 +2,15 @@
 #include <iostream>
 
 #include <jax.h>
-
 using namespace jax;
 
-typedef jax::RouterConnection<Packet, Packet> MyRouterConnection;
+typedef jax::RouterConnection<Packet, Packet> MyClientConnection;
 
-
-class GenComponentController :
-    public MyRouterConnection::EventListener
+class ClientController :
+    public MyClientConnection::EventListener
 {
 public:
-    GenComponentController::GenComponentController(const std::string& serviceid, 
+    ClientController::ClientController(const std::string& serviceid, 
 				   const std::string& password, 
 				   const std::string& hostname, 
 				   unsigned int port, bool outgoing_dir,
@@ -25,15 +23,18 @@ public:
     void onRouterError();
     void onRouterPacket(jax::Packet* pkt);
 
+   // Custom callback before and after presence is sent
+    void onCallBack();
+
 private:
+
     std::string _id;
     std::string _password;
     std::string _hostname;
     unsigned int _port;
     bedrock::ThreadPool _tpool;
     bedrock::net::SocketWatcher _watcher;
-    MyRouterConnection _router;
+    MyClientConnection _router;
     std::string _perl_func;
     void* _my_self;
 };
-

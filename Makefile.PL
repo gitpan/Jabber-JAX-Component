@@ -8,16 +8,16 @@ WriteMakefile(
     dist => { 'TARFLAGS'	=> 'cvf',
               'COMPRESS'        => 'gzip -9f',
     		'SUFFIX'	=> '.tgz'},
-    'LINKTYPE'	=> 'dynamic',
+#    'LINKTYPE'	=> 'dynamic',
     'NAME'	=> 'Jabber::JAX::Component',
     'VERSION_FROM' => 'Component.pm',
     'DEFINE'	=> '',   
-    'LIBS'      => [ '-L'.abs_path('./').' '.
-		     '-L/usr/local/lib -lbedrock -ljudo -ljax '.
-		     '-lresolv -lnsl -lpthread -lresolv '.
-		     '-lnsl -lpthread' ],
-    'INC'      => '-I/usr/local/include -I'.abs_path('./'),
-    'CCFLAGS'  => '-DHAVE_CONFIG_H -D_REENTRANT '.
-	          '-D_POSIX_PTHREAD_SEMANTICS -D__USE_MALLOC',
+#    'LIBS'      => [ '-L'.abs_path('./').' '.
+#		     '-L/usr/local/lib -lbedrock -ljudo -ljax '.
+#		     '-lresolv -lnsl -lpthread -lresolv '.
+#		     '-lnsl -lpthread' ],
+#    'INC'      => '-I/usr/local/include -I'.abs_path('./'),
+#    'CCFLAGS'  => '-DHAVE_CONFIG_H -D_REENTRANT '.
+#	          '-D_POSIX_PTHREAD_SEMANTICS -D__USE_MALLOC',
 );
 

@@ -1,4 +1,5 @@
 use strict;
+use lib '../blib/lib';
 
 use Jabber::Judo::Element;
 
