@@ -1,0 +1,122 @@
+
+		       Jabber::JAX::Component Package
+
+
+    Copyright (c) 2001 Piers Harding.
+    All rights reserved.
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of either:
+
+	a) the GNU General Public License as published by the Free
+	Software Foundation; either version 1, or (at your option) any
+	later version, or
+
+	b) the "Artistic License" which comes with this Kit.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See either
+    the GNU General Public License or the Artistic License for more details.
+
+    You should have received a copy of the Artistic License with this
+    Kit, in the file named "Artistic".  If not, I'll be glad to provide one.
+
+    You should also have received a copy of the GNU General Public License
+    along with this program; if not, write to the Free Software Foundation,
+    Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307, USA.
+
+    For those of you that choose to use the GNU General Public License,
+    my interpretation of the GNU General Public License is that no Perl
+    script falls under the terms of the GPL unless you explicitly put
+    said script under the terms of the GPL yourself.  Furthermore, any
+    object code linked with perl does not automatically fall under the
+    terms of the GPL, provided such object code only adds definitions
+    of subroutines and variables, and does not otherwise impair the
+    resulting interpreter from executing any standard Perl script.  I
+    consider linking in C subroutines in this manner to be the moral
+    equivalent of defining subroutines in the Perl language itself.  You
+    may sell such an object file as proprietary provided that you provide
+    or offer to provide the Perl source, as specified by the GNU General
+    Public License.  (This is merely an alternate way of specifying input
+    to the program.)  You may also sell a binary produced by the dumping of
+    a running Perl script that belongs to you, provided that you provide or
+    offer to provide the Perl source as specified by the GPL.  (The
+    fact that a Perl interpreter and your code are in the same binary file
+    is, in this case, a form of mere aggregation.)  This is my interpretation
+    of the GPL.  If you still have concerns or difficulties understanding
+    my intent, feel free to contact me.  Of course, the Artistic License
+    spells all this out for your protection, so you may prefer to use that.
+
+
+    One last thing - The JECL Libraries are a prerequisite for this perl package to work.  These libraries ( and stunning piece of work ) are available at http::/jabber.tigris.org and are covered by separate terms and conditions found within.  For this also - I'd like to thank Dizzy :-).
+
+
+Ok.
+
+What Is Jabber::JAX::Component?
+===============================
+
+Available at: http://www.ompa.net/JAXREADME.html 
+Download  at: http://www.ompa.net/download/Jabber-JAX-Component-0.01.tar.gz
+
+Jabber::JAX::Component is yet another perl implementation for writing 
+Jabber components.  How it differs is that it is a wrapper for the 
+high performance JECL libraries for writing components in C++.  With this in mind - the idea is to be able to write Jabber Components in perl that are very quick.  My first attempt at bench marking this - writting the good ol' echo component - got through put of 1000 Messages in about 12 seconds.
+
+Jabber::JAX::Component is the complement for the jax::RouterConnection C++ object
+( see the jax.h header file for a description ).  It creates a basic connection object for a component to a jaber server with a thread pool ( currently 10 ), and provides the framework for embedding a perl callback subroutine to handle each incoming packet.  See the gen_component.h header file for more details.
+
+What you Need
+=============
+
+gcc 3.x <- prerequisite for the JECL Libraries see Library README file
+perl built with -Dusemultiplicity - NO THREADS
+perl modules -
+ - Inline
+ - Inline::CPP
+JECL Libraries ( http://jabber.tigris.org )
+
+
+To run this you should use perl 5.6.1 - what ever one you use it MUST NOT be compiled with threads ( no -Dusethreads -Duseithreads -D5005threads etc ) See below for more details - check perl -V, and you need to get the JECL libraries from http://jabber.tigris.org ( check them out of CVS instead of downloading the tgz files - it is much better if you get the echo_component found within, built and working first ).  The only catch with the libraries are the dependencies ( explained within the library README doco ) - this requires the g++ >= 3.0.x.  At the time of writing this can be obtained from http://www.redhat.com in the RH 7.2 beta download section ( yay - GO RedHat ! ).
+Once you have built the libraries - if there is not install routine ( as there wasn't at the time of writing this ), then copy the *.h, xmlparse.h, *.a, and *.la files for judo, jax, and bedrock into the Jabber::JAX::Component distribution directory ( where the primary Makefile.PL is ), or into their respective palce in /usr/local/lib and /usr/local/include.  After all - the build process had to be able to fine them :-).
+
+
+Building the Correct perl
++=======================+
+
+If you do not have RedHat 7.2 or greater, and the one you are trying to use is misbehaving, you can try building your own. It cannot be stressed enough how important it is that you do not have a threaded perl - this will clash violently with the threading of the JECL libraries - no -Dusethreads -Duseithreads -D5005threads etc.
+My "Configure" directives are:
+./Configure -des -Doptimize=-O2 -march=i386 -mcpu=i686 -Dcc=gcc -Dcccdlflags=-fPIC -Dusemultiplicity -Dinstallprefix=/usr/local/mperl561 -Dprefix=/usr/local/mperl561 -Darchname=i386-linux -Dd_dosuid -Dd_semctl_semun -Di_db -Di_gdbm -Di_shadow -Di_syslog -Dman3ext=3pm -Uuselargefiles
+
+And these work fine for me :-).
+
+
+Other than this then - the usual 
+perl Makefile.PL
+make 
+make test
+and make install should work just fine
+
+Writing Applications
+=====================
+
+There are two test/sample scripts found with this distribution
+comptest.pl <- the echo component test
+judotest.pl <- XML node manipulation test
+
+
+To run the component test you need your very on jabber server, and to add some configuration such as this:
+
+  <service id='echocomp'>
+    <accept>
+      <ip/>
+      <port>7000</port>
+      <secret>mysecret</secret>
+    </accept>
+  </service>
+
+I hope you enjoy this.
+
+Any feedback welcome at piers@ompa.net.
+
+Cheers.
